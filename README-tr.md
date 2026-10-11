@@ -145,6 +145,10 @@ Bir sürümü yerelde denemek için `goreleaser release --snapshot --clean` kull
 
 Komut yapısı, Go için minimalist bir CLI kütüphanesi olan [Kommando](https://github.com/yigit433/kommando) ile kurulmuştur.
 
+## Katkıda bulunma
+
+Hata bildirimlerine ve pull request'lere açığız. Ayrıntılar [CONTRIBUTING.md](CONTRIBUTING.md) dosyasında. Güvenlik açıklarını [SECURITY.md](SECURITY.md) dosyasında anlatıldığı gibi gizli olarak bildirin.
+
 ## Lisans
 
 [Apache Lisansı 2.0](LICENSE) © 2026 Meya Teknoloji

@@ -145,6 +145,10 @@ Try a release locally with `goreleaser release --snapshot --clean`.
 
 The command tree is built with [Kommando](https://github.com/yigit433/kommando), a minimalist CLI framework for Go.
 
+## Contributing
+
+Bug reports and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md); report security problems privately as described in [SECURITY.md](SECURITY.md).
+
 ## License
 
 [Apache License 2.0](LICENSE) © 2026 Meya Teknoloji
