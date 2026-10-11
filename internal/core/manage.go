@@ -46,6 +46,12 @@ func (in *Installation) Status() error {
 	ui.Println("  Status:    %s", colorState(state))
 	ui.Println("  Database:  %s", colorState(docker.ContainerState(dbContainer)))
 	ui.Println("  Address:   %s", s.URL())
+	switch {
+	case s.Bundled():
+		ui.Println("  Proxy:     %s (Deckplane's Traefik, Let's Encrypt for %s)", colorState(docker.ContainerState(traefikName)), s.ACMEEmail)
+	case s.Expose == ExposeDomain:
+		ui.Println("  Proxy:     your Traefik on network %s", s.TraefikNetwork)
+	}
 	if img := docker.ContainerImage(containerName); img != "" {
 		ui.Println("  Image:     %s", img)
 	}

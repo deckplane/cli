@@ -4,6 +4,7 @@ package stack
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -53,11 +54,13 @@ func indent(s string) string {
 	return "  " + strings.ReplaceAll(s, "\n", "\n  ")
 }
 
-// PortFree reports whether a TCP port can be bound on all interfaces.
+// PortFree reports whether a TCP port can be bound on all interfaces. A
+// permission error (low ports without root) says nothing about the port being
+// used, so it counts as free.
 func PortFree(port int) bool {
 	l, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
-		return false
+		return errors.Is(err, os.ErrPermission)
 	}
 	l.Close()
 	return true

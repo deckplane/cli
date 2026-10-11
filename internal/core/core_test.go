@@ -69,12 +69,32 @@ func TestComposeModes(t *testing.T) {
 		t.Fatal(err)
 	}
 	out, _ = os.ReadFile(filepath.Join(dir, composeFile))
-	for _, want := range []string{"Host(`dp.example.com`)", "name: proxy", "core:v1.2.0", "certresolver=le"} {
+	for _, want := range []string{"Host(`dp.example.com`)", "name: proxy", "external: true", "core:v1.2.0", "certresolver=le", "entrypoints=websecure"} {
 		if !strings.Contains(string(out), want) {
 			t.Errorf("domain mode compose missing %q", want)
 		}
 	}
-	if strings.Contains(string(out), "ports:") {
-		t.Error("domain mode compose publishes a port")
+	if strings.Contains(string(out), "ports:") || strings.Contains(string(out), "deckplane-traefik") {
+		t.Error("existing-Traefik compose publishes ports or adds its own Traefik")
+	}
+}
+
+func TestComposeBundledTraefik(t *testing.T) {
+	dir := t.TempDir()
+	s := Settings{Expose: ExposeDomain, Domain: "dp.example.com", Proxy: ProxyBundled, ACMEEmail: "ops@example.com"}.withDefaults()
+	if err := writeCompose(dir, s); err != nil {
+		t.Fatal(err)
+	}
+	out, _ := os.ReadFile(filepath.Join(dir, composeFile))
+	for _, want := range []string{
+		"image: " + traefikImage, "acme.email=ops@example.com", `"443:443"`, "name: deckplane-proxy",
+		"traefik.docker.network=deckplane-proxy", "entrypoints=websecure", "letsencrypt:",
+	} {
+		if !strings.Contains(string(out), want) {
+			t.Errorf("bundled compose missing %q", want)
+		}
+	}
+	if strings.Contains(string(out), "external: true") {
+		t.Error("bundled proxy network must be created by the stack, not external")
 	}
 }

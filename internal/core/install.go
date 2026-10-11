@@ -3,6 +3,8 @@ package core
 import (
 	"errors"
 	"fmt"
+	"net"
+	"net/mail"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -28,6 +30,8 @@ type InstallOptions struct {
 	Domain         string
 	TraefikNetwork string
 	CertResolver   string
+	Entrypoint     string
+	ACMEEmail      string
 	AdminEmail     string
 	AdminName      string
 	AdminPassword  string
@@ -117,6 +121,9 @@ func Install(o InstallOptions) error {
 		"Files:    " + o.Dir,
 		"",
 	}
+	if s.Bundled() {
+		lines = append(lines, "HTTPS certificate: requested automatically once DNS points here", "")
+	}
 	if !adminCreated {
 		lines = append(lines, "Next: create your admin account → deckplane core setup")
 	}
@@ -163,53 +170,37 @@ func applyAccessChoices(s *Settings, o InstallOptions, existing, interactive boo
 	if o.Registry != "" {
 		s.Registry = o.Registry
 	}
-	if o.CertResolver != "" {
-		s.CertResolver = o.CertResolver
-	}
 	switch {
 	case o.Domain != "":
 		s.Expose, s.Domain = ExposeDomain, o.Domain
-		if o.TraefikNetwork != "" {
-			s.TraefikNetwork = o.TraefikNetwork
+		if err := chooseProxy(s, o, interactive); err != nil {
+			return err
 		}
 	case o.Port != 0:
 		s.Expose, s.Port = ExposePort, o.Port
 	case !existing && interactive:
-		if err := askAccess(s); err != nil {
+		if err := askAccess(s, o); err != nil {
 			return err
 		}
 	}
-
-	if s.Expose == ExposeDomain {
-		if s.TraefikNetwork == "" {
-			s.TraefikNetwork = "traefik"
-		}
-		if !docker.NetworkExists(s.TraefikNetwork) {
-			return ui.NewError(fmt.Sprintf("Docker network %q does not exist", s.TraefikNetwork),
-				"Domain mode needs Traefik already running on this machine.\n"+
-					"Pass the network Traefik uses with --traefik-network, or use --port instead.", nil)
-		}
-		return nil
-	}
-
-	running := docker.ContainerState(containerName) != "missing"
-	if !running && !stack.PortFree(s.Port) {
-		return ui.NewError(fmt.Sprintf("Port %d is already in use", s.Port),
-			"Choose another port, for example:  deckplane core install --port 8080", nil)
-	}
-	return nil
+	*s = s.withDefaults()
+	return checkAccess(*s)
 }
 
-func askAccess(s *Settings) error {
+func askAccess(s *Settings, o InstallOptions) error {
 	ui.Println("")
+	def := 1
+	if len(docker.FindTraefik(traefikName)) > 0 {
+		def = 0
+	}
 	choice, err := ui.Choose("How will people reach Deckplane Core?", []string{
-		"Through a port on this machine (simplest, e.g. http://server-ip:3000)",
-		"Through my own domain with HTTPS (needs Traefik already running here)",
-	}, 0)
+		"With my own domain over HTTPS (e.g. https://deckplane.example.com)",
+		"Through a port on this machine (no domain needed, e.g. http://server-ip:3000)",
+	}, def)
 	if err != nil {
 		return err
 	}
-	if choice == 0 {
+	if choice == 1 {
 		s.Expose = ExposePort
 		answer, err := ui.AskRequired("Port:", strconv.Itoa(s.Port), validatePort)
 		if err != nil {
@@ -223,21 +214,140 @@ func askAccess(s *Settings) error {
 	if s.Domain, err = ui.AskRequired("Domain (e.g. deckplane.example.com):", s.Domain, validateDomain); err != nil {
 		return err
 	}
-	def := s.TraefikNetwork
-	if def == "" {
-		def = "traefik"
-		for _, n := range docker.BridgeNetworks() {
-			if strings.Contains(n, "traefik") {
-				def = n
-				break
+	if addrs, err := net.LookupHost(s.Domain); err != nil || len(addrs) == 0 {
+		ui.Warn("%s does not resolve yet. Point its DNS A record to this server; HTTPS starts working once it does.", s.Domain)
+	} else {
+		ui.Info("%s points to %s", s.Domain, strings.Join(addrs, ", "))
+	}
+	return chooseProxy(s, o, true)
+}
+
+// chooseProxy decides which Traefik serves the domain: one already running
+// on this host (found automatically), or one the CLI runs next to Core.
+func chooseProxy(s *Settings, o InstallOptions, interactive bool) error {
+	if o.CertResolver != "" {
+		s.CertResolver = o.CertResolver
+	}
+	if o.Entrypoint != "" {
+		s.Entrypoint = o.Entrypoint
+	}
+	if o.ACMEEmail != "" {
+		s.ACMEEmail = o.ACMEEmail
+	}
+	if o.TraefikNetwork != "" {
+		s.Proxy, s.TraefikNetwork = ProxyExisting, o.TraefikNetwork
+		return nil
+	}
+
+	if found := docker.FindTraefik(traefikName); len(found) > 0 {
+		t := found[0]
+		ui.Success("Found Traefik running in container %s", t.Container)
+		use := true
+		if interactive {
+			var err error
+			if use, err = ui.Confirm("Route Deckplane through this Traefik?", true); err != nil {
+				return err
+			}
+		}
+		if use {
+			return useTraefik(s, t, o, interactive)
+		}
+	} else {
+		ui.Info("No Traefik is running on this machine.")
+	}
+
+	s.Proxy = ProxyBundled
+	if s.ACMEEmail != "" {
+		return nil
+	}
+	if !interactive {
+		return ui.NewError("An email address is needed for the HTTPS certificate",
+			"Deckplane will run its own Traefik with free Let's Encrypt certificates.\n"+
+				"Pass the email Let's Encrypt should use:  --acme-email you@example.com\n"+
+				"To use a Traefik you already run, pass --traefik-network instead.", nil)
+	}
+	ui.Println("Deckplane will run its own Traefik with free HTTPS certificates from Let's Encrypt.")
+	ui.Info("Ports 80 and 443 must be free and reachable from the internet.")
+	email, err := ui.AskRequired("Email for certificate expiry notices:", "", validateEmail)
+	s.ACMEEmail = email
+	return err
+}
+
+// useTraefik routes Core through a detected Traefik, asking only for what
+// could not be read from it.
+func useTraefik(s *Settings, t docker.Traefik, o InstallOptions, interactive bool) error {
+	s.Proxy = ProxyExisting
+	switch {
+	case len(t.Networks) == 0:
+		return ui.NewError(fmt.Sprintf("Traefik (%s) is not attached to a Docker network", t.Container),
+			"Pass the network to use with --traefik-network.", nil)
+	case len(t.Networks) > 1 && interactive:
+		i, err := ui.Choose("Which of Traefik's Docker networks should Deckplane join?", t.Networks, 0)
+		if err != nil {
+			return err
+		}
+		s.TraefikNetwork = t.Networks[i]
+	default:
+		s.TraefikNetwork = t.Networks[0]
+	}
+
+	var err error
+	if o.CertResolver == "" {
+		switch {
+		case t.CertResolver != "":
+			s.CertResolver = t.CertResolver
+		case interactive:
+			if s.CertResolver, err = ui.AskRequired("Traefik certificate resolver name:", "le", nil); err != nil {
+				return err
 			}
 		}
 	}
-	if s.TraefikNetwork, err = ui.AskRequired("Docker network Traefik is attached to:", def, nil); err != nil {
-		return err
+	if o.Entrypoint == "" {
+		switch {
+		case t.Entrypoint != "":
+			s.Entrypoint = t.Entrypoint
+		case interactive:
+			if s.Entrypoint, err = ui.AskRequired("Traefik HTTPS entrypoint name:", "websecure", nil); err != nil {
+				return err
+			}
+		}
 	}
-	s.CertResolver, err = ui.AskRequired("Traefik certificate resolver name:", s.CertResolver, nil)
-	return err
+	ui.Info("Network %s · certificate resolver %s · entrypoint %s", s.TraefikNetwork, s.CertResolver, s.Entrypoint)
+	return nil
+}
+
+// checkAccess catches problems that would only show up after starting.
+func checkAccess(s Settings) error {
+	switch {
+	case s.Bundled():
+		if docker.ContainerState(traefikName) != "missing" {
+			return nil // our Traefik already holds the ports
+		}
+		for _, port := range []int{80, 443} {
+			if !stack.PortFree(port) {
+				return ui.NewError(fmt.Sprintf("Port %d is already in use", port),
+					"HTTPS needs ports 80 and 443, and another web server (nginx, Apache, another proxy…) is using one.\n"+
+						"If it is Traefik, run the installer again and choose it. Otherwise stop it,\n"+
+						"or serve Deckplane on a port instead:  deckplane core install --port 3000", nil)
+			}
+		}
+	case s.Expose == ExposeDomain:
+		if s.TraefikNetwork == "bridge" {
+			return ui.NewError("Traefik only uses Docker's default bridge network",
+				"Attach Traefik to a named network (docker network create proxy), then pass --traefik-network proxy.", nil)
+		}
+		if !docker.NetworkExists(s.TraefikNetwork) {
+			return ui.NewError(fmt.Sprintf("Docker network %q does not exist", s.TraefikNetwork),
+				"Pass the network your Traefik uses with --traefik-network,\nor leave it out and Deckplane runs its own Traefik.", nil)
+		}
+	default:
+		running := docker.ContainerState(containerName) != "missing"
+		if !running && !stack.PortFree(s.Port) {
+			return ui.NewError(fmt.Sprintf("Port %d is already in use", s.Port),
+				"Choose another port, for example:  deckplane core install --port 8080", nil)
+		}
+	}
+	return nil
 }
 
 func validatePort(v string) error {
@@ -251,6 +361,13 @@ func validatePort(v string) error {
 func validateDomain(v string) error {
 	if v == "" || strings.Contains(v, "://") || strings.ContainsAny(v, "/ ") || !strings.Contains(v, ".") {
 		return errors.New("enter only the domain name, like deckplane.example.com")
+	}
+	return nil
+}
+
+func validateEmail(v string) error {
+	if _, err := mail.ParseAddress(v); err != nil || !strings.Contains(v, "@") {
+		return errors.New("enter a valid email address")
 	}
 	return nil
 }

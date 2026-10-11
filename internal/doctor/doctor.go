@@ -30,6 +30,7 @@ func Run() error {
 		{"Docker Compose", func() (string, error) { return "", docker.CheckCompose() }},
 		{"Deckplane Cloud", func() (string, error) { return reach(licenseAPI() + "/health") }},
 		{"Deckplane registry", func() (string, error) { return reach("https://" + registry() + "/v2/") }},
+		{"Traefik", traefikState},
 		{"Deckplane Core", func() (string, error) { return installState(paths.CoreDir(), "deckplane-core") }},
 		{"Deckplane agent", func() (string, error) { return installState(paths.AgentDir(), "deckplane-agent") }},
 	}
@@ -105,4 +106,13 @@ func registry() string {
 		return v
 	}
 	return core.DefaultRegistry
+}
+
+func traefikState() (string, error) {
+	found := docker.FindTraefik("")
+	if len(found) == 0 {
+		return "not running (Deckplane can run its own)", nil
+	}
+	t := found[0]
+	return fmt.Sprintf("%s · networks %v · resolver %q · entrypoint %q", t.Container, t.Networks, t.CertResolver, t.Entrypoint), nil
 }

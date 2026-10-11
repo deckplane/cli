@@ -8,6 +8,9 @@ import (
 	"github.com/deckplane/deckplane-cli/internal/stack"
 )
 
+// traefikImage needs v3.6 or newer: older releases cannot talk to Docker 29+.
+const traefikImage = "traefik:v3.6"
+
 // The compose file is regenerated on every install and update so fixes
 // reach existing installs. People customise via compose.override.yaml,
 // which Docker Compose merges automatically.
@@ -57,7 +60,7 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network={{.TraefikNetwork}}"
       - "traefik.http.routers.deckplane-core.rule=Host(` + "`{{.Domain}}`" + `)"
-      - "traefik.http.routers.deckplane-core.entrypoints=websecure"
+      - "traefik.http.routers.deckplane-core.entrypoints={{.Entrypoint}}"
       - "traefik.http.routers.deckplane-core.tls=true"
       - "traefik.http.routers.deckplane-core.tls.certresolver={{.CertResolver}}"
       - "traefik.http.services.deckplane-core.loadbalancer.server.port=3000"
@@ -68,16 +71,47 @@ services:
     networks:
       - internal
 {{- end}}
+{{- if .Bundled}}
+
+  # Reverse proxy with free HTTPS certificates from Let's Encrypt.
+  traefik:
+    image: ` + traefikImage + `
+    container_name: ` + traefikName + `
+    restart: unless-stopped
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.le.acme.email={{.ACMEEmail}}
+      - --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.le.acme.httpchallenge.entrypoint=web
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt:/letsencrypt
+    networks:
+      - traefik
+{{- end}}
 
 volumes:
   pgdata:
+{{- if .Bundled}}
+  letsencrypt:
+{{- end}}
 
 networks:
   internal:
 {{- if eq .Expose "domain"}}
   traefik:
-    external: true
     name: {{.TraefikNetwork}}
+{{- if not .Bundled}}
+    external: true
+{{- end}}
 {{- end}}
 `))
 

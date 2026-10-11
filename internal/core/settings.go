@@ -22,16 +22,26 @@ const (
 	DefaultPort       = 3000
 
 	containerName = "deckplane-core"
-	dbContainer   = "deckplane-postgres"
-	serviceName   = "core"
-	envFileName   = ".env"
-	composeFile   = "compose.yaml"
+	traefikName   = "deckplane-traefik"
+	// bundledNetwork is the proxy network of the Traefik the CLI runs itself;
+	// other apps on this host can join it to be routed too.
+	bundledNetwork = "deckplane-proxy"
+	dbContainer    = "deckplane-postgres"
+	serviceName    = "core"
+	envFileName    = ".env"
+	composeFile    = "compose.yaml"
 )
 
 // Expose modes decide how people reach Core.
 const (
 	ExposePort   = "port"   // publish a port on this machine
 	ExposeDomain = "domain" // route a domain through an existing Traefik
+)
+
+// Proxy modes for ExposeDomain.
+const (
+	ProxyExisting = "existing" // a Traefik already running on this host
+	ProxyBundled  = "bundled"  // a Traefik the CLI runs next to Core
 )
 
 // Settings are the install choices the CLI stores in .env (DECKPLANE_*
@@ -42,8 +52,11 @@ type Settings struct {
 	Expose         string
 	Port           int
 	Domain         string
+	Proxy          string
 	TraefikNetwork string
 	CertResolver   string
+	Entrypoint     string
+	ACMEEmail      string
 }
 
 func settingsFrom(env *envfile.File) Settings {
@@ -52,8 +65,11 @@ func settingsFrom(env *envfile.File) Settings {
 		Registry:       env.Get("DECKPLANE_REGISTRY"),
 		Expose:         env.Get("DECKPLANE_EXPOSE"),
 		Domain:         env.Get("DECKPLANE_DOMAIN"),
+		Proxy:          env.Get("DECKPLANE_PROXY"),
 		TraefikNetwork: env.Get("TRAEFIK_NETWORK"),
 		CertResolver:   env.Get("TRAEFIK_CERT_RESOLVER"),
+		Entrypoint:     env.Get("TRAEFIK_ENTRYPOINT"),
+		ACMEEmail:      env.Get("ACME_EMAIL"),
 	}
 	s.Port, _ = strconv.Atoi(env.Get("DECKPLANE_PORT"))
 	return s.withDefaults()
@@ -72,8 +88,17 @@ func (s Settings) withDefaults() Settings {
 	if s.Port == 0 {
 		s.Port = DefaultPort
 	}
+	if s.Proxy == "" {
+		s.Proxy = ProxyExisting
+	}
 	if s.CertResolver == "" {
 		s.CertResolver = "le"
+	}
+	if s.Entrypoint == "" {
+		s.Entrypoint = "websecure"
+	}
+	if s.Proxy == ProxyBundled {
+		s.TraefikNetwork, s.CertResolver, s.Entrypoint = bundledNetwork, "le", "websecure"
 	}
 	return s
 }
@@ -85,10 +110,18 @@ func (s Settings) store(env *envfile.File) {
 	env.Set("DECKPLANE_PORT", strconv.Itoa(s.Port))
 	if s.Expose == ExposeDomain {
 		env.Set("DECKPLANE_DOMAIN", s.Domain)
+		env.Set("DECKPLANE_PROXY", s.Proxy)
 		env.Set("TRAEFIK_NETWORK", s.TraefikNetwork)
 		env.Set("TRAEFIK_CERT_RESOLVER", s.CertResolver)
+		env.Set("TRAEFIK_ENTRYPOINT", s.Entrypoint)
+		if s.Proxy == ProxyBundled {
+			env.Set("ACME_EMAIL", s.ACMEEmail)
+		}
 	}
 }
+
+// Bundled reports whether the CLI runs its own Traefik.
+func (s Settings) Bundled() bool { return s.Expose == ExposeDomain && s.Proxy == ProxyBundled }
 
 // Image is the full Core image reference.
 func (s Settings) Image() string { return s.Registry + "/" + imageRepo + ":" + s.Version }
