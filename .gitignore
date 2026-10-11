@@ -1,0 +1,16 @@
+# Build output
+/deckplane
+/deckplane.exe
+/dist/
+
+# Go
+*.test
+*.out
+coverage.*
+
+# Editors and OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
