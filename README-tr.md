@@ -38,6 +38,8 @@ go install github.com/deckplane/deckplane-cli@latest
 
 Çalıştığını `deckplane version` ile kontrol edin.
 
+Kurulum scriptleri indirilen dosyanın checksum'ını doğrular. Belirli bir sürümü kurmak için çalıştırmadan önce `DECKPLANE_VERSION=v0.1.0`, klasörü seçmek için `DECKPLANE_INSTALL_DIR` ayarlayın. CLI'ı güncellemek için kurulum scriptini istediğiniz zaman tekrar çalıştırmanız yeterli.
+
 ## Deckplane Core'u kurun
 
 ```bash
@@ -127,6 +129,17 @@ go test ./...
 ```
 
 Yerelde derlenmiş bir Core imajıyla test etmek için `DECKPLANE_DEV=1` ayarlayın. Bu ayar registry girişini atlar ve imaj çekme hatalarını yok sayar. Böylece örneğin `localhost/deckplane/core:dev` etiketli bir imajla `--registry localhost --version dev` kullanabilirsiniz.
+
+### Sürüm yayınlama
+
+Bir sürüm etiketi gönderdiğinizde GitHub Actions; Linux, macOS ve Windows (amd64 ve arm64) için binary'leri bir `checksums.txt` ile birlikte yayınlar:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Bir sürümü yerelde denemek için `goreleaser release --snapshot --clean` kullanın.
 
 ## Kommando ile geliştirildi
 

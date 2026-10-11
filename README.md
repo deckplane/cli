@@ -38,6 +38,8 @@ go install github.com/deckplane/deckplane-cli@latest
 
 Check it works with `deckplane version`.
 
+The installers verify the download's checksum. To install a specific version, set `DECKPLANE_VERSION=v0.1.0` before running them; set `DECKPLANE_INSTALL_DIR` to choose the folder. Run the installer again at any time to update the CLI.
+
 ## Install Deckplane Core
 
 ```bash
@@ -127,6 +129,17 @@ go test ./...
 ```
 
 To test against a locally built Core image, set `DECKPLANE_DEV=1`. This skips the registry sign-in and ignores pull failures, so you can use, for example, `--registry localhost --version dev` with an image tagged `localhost/deckplane/core:dev`.
+
+### Releasing
+
+Push a version tag and GitHub Actions publishes binaries for Linux, macOS and Windows (amd64 and arm64) with a `checksums.txt`:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Try a release locally with `goreleaser release --snapshot --clean`.
 
 ## Built with Kommando
 
