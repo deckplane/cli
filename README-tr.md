@@ -50,22 +50,25 @@ Kurulum sihirbazı sırasıyla:
 
 1. Docker'ı kontrol eder,
 2. lisans anahtarınızı sorar (yazarken gizlenir) ve Deckplane ile doğrular,
-3. Core'a nasıl erişileceğini sorar: HTTPS ile kendi alan adınız ya da bu makinedeki bir port (aşağıya bakın),
+3. Core'a nasıl erişileceğini sorar: HTTPS ile kendi alan adınız ya da bu sunucunun IP adresi (aşağıya bakın),
 4. tüm şifreleri ve gizli anahtarları sizin için üretir,
 5. Core'u ve veritabanını indirip başlatır, sağlıklı hale gelmesini bekler,
 6. ilk yönetici hesabınızı oluşturmayı önerir.
 
 Sonunda açmanız gereken adresi gösterir. `install` komutunu tekrar çalıştırmak güvenlidir; verileriniz ve gizli anahtarlarınız korunur.
 
-### Alan adı (HTTPS) ya da port
+### Alan adı ya da IP adresi
+
+Core hiçbir zaman kendi başına port açmaz; her zaman [Traefik](https://traefik.io) arkasında çalışır. Sunucuda Docker içinde çalışan bir Traefik varsa kurulum onu bulur, ağını, sertifika çözücüsünü ve entrypoint'lerini okur, sonra onayınızı ister. Yoksa Deckplane kendi Traefik'ini kurar.
 
 | Seçim | Sonuç | Gerekenler |
 |---|---|---|
-| **Alan adı, Traefik zaten çalışıyor** | Traefik'iniz üzerinden `https://deckplane.example.com` | Başka bir şey gerekmez: kurulum Traefik'inizi bulur, ağını, sertifika çözücüsünü ve HTTPS entrypoint'ini okur, sonra onayınızı ister |
-| **Alan adı, Traefik yok** | Ücretsiz Let's Encrypt sertifikasıyla `https://deckplane.example.com` | Alan adının DNS kaydının bu sunucuyu göstermesi, 80 ve 443 portlarının boş olması ve bir e-posta adresi. Kurulum Core'un yanına kendi Traefik'ini kurar |
-| **Port** | `http://sunucu-ip:3000` | Hiçbir şey; Deckplane'i denemek ya da iç ağlar için uygundur |
+| **Kendi alan adınız** (önerilen) | Sertifikalı `https://deckplane.example.com` | Alan adının DNS kaydının bu sunucuyu göstermesi. Kendi Traefik'inizle başka bir şey gerekmez; Deckplane'in Traefik'iyle 80 ve 443 portlarının boş olması ve Let's Encrypt için bir e-posta adresi |
+| **Alan adı olmadan, IP adresi** | `http://203.0.113.10` (80 portunda düz HTTP) | 80 portunun boş olması ya da kendi Traefik'inizin HTTP entrypoint'i. Deckplane'i denemek ya da iç ağlar için uygundur |
 
-Deckplane kendi Traefik'ini kurduğunda sunucudaki diğer uygulamalar da onu kullanabilir: onları `deckplane-proxy` Docker ağına bağlayın ve `websecure` entrypoint'i ile `le` sertifika çözücüsünü kullanan Traefik label'ları ekleyin.
+Kendi Traefik'iniz varken alan adı vermezseniz Core, 80 portuna gelen ve başka hiçbir uygulamanın almadığı tüm istekleri karşılar. Traefik'iniz tüm HTTP isteklerini HTTPS'e yönlendiriyorsa bu çalışmaz; o durumda alan adı kullanın.
+
+Deckplane kendi Traefik'ini kurduğunda sunucudaki diğer uygulamalar da onu kullanabilir: onları `deckplane-proxy` Docker ağına bağlayın ve Traefik label'ları ekleyin (alan adıyla `websecure` entrypoint'i ve `le` sertifika çözücüsü, alan adı olmadan `web` entrypoint'i).
 
 > Linux'ta Core `/var/lib/deckplane` klasörüne kurulduğu için `sudo` gerekir. macOS ve Windows'ta `~/.deckplane/core` klasörüne kurulur ve `sudo` gerekmez.
 
@@ -74,11 +77,12 @@ Deckplane kendi Traefik'ini kurduğunda sunucudaki diğer uygulamalar da onu kul
 ```bash
 export DECKPLANE_LICENSE_KEY=dpl_...
 export DECKPLANE_ADMIN_PASSWORD='guclu-bir-sifre'
-sudo -E deckplane core install --yes --port 3000 \
+sudo -E deckplane core install --yes \
+  --domain deckplane.example.com --acme-email siz@example.com \
   --admin-email admin@example.com --admin-name "Admin"
 ```
 
-Core'u kendi alan adınızda yayınlamak için `--port 3000` yerine `--domain deckplane.example.com` kullanın. Çalışan bir Traefik varsa bulunur ve kullanılır; yoksa `--acme-email siz@example.com` ekleyin, Deckplane kendi Traefik'ini kurar. Tespit Traefik'inizin ayarlarını okuyamazsa bunları `--traefik-network`, `--cert-resolver` ve `--traefik-entrypoint` ile verin.
+Çalışan bir Traefik varsa bulunur ve kullanılır; o zaman `--acme-email` gerekmez. Yoksa Deckplane kendi Traefik'ini kurar. Tespit Traefik'inizin ayarlarını okuyamazsa bunları `--traefik-network`, `--cert-resolver` ve `--traefik-entrypoint` ile verin. Core'u sunucunun IP adresinden HTTP ile yayınlamak için `--domain` ve `--acme-email` seçeneklerini çıkarın.
 
 ## Sunucu bağlayın (agent)
 
@@ -126,8 +130,8 @@ Her klasörde bir `.env` dosyası (ayarlar ve gizli anahtarlar; yalnızca sahibi
 
 - **"Docker is not installed" veya "not running"**: Mesaj, çalıştırmanız gereken komutu ya da açmanız gereken uygulamayı söyler.
 - **"Your license key was not accepted"**: Deckplane Cloud → Lisanslar sayfasında anahtarın aktif olduğunu, süresinin dolmadığını ya da iptal edilmediğini ve anahtarın tamamını kopyaladığınızı kontrol edin.
-- **"Port 3000 is already in use"** (port modu): Başka bir portla kurun, örneğin `--port 8080`, ya da alan adı kullanın.
-- **"Port 80/443 is already in use"** (Traefik olmadan alan adı modu): HTTPS portlarını başka bir web sunucusu kullanıyor. Bu bir Traefik ise kurulumu tekrar çalıştırıp onu seçin; değilse durdurun ya da port modunu kullanın.
+- **"Port 80 (veya 443) is already in use"**: Deckplane kendi Traefik'ini kurmak istiyor ama portu başka bir program kullanıyor; mesaj, mümkünse hangi program olduğunu söyler. Docker içinde çalışan bir Traefik ise onu `--traefik-network <ağının adı>` ile kullanın. Değilse o programı durdurun (örneğin `systemctl stop nginx`) ve kurulumu tekrar çalıştırın.
+- **IP adresi açılmıyor** (alan adı yok, kendi Traefik'iniz var): Traefik'iniz muhtemelen tüm HTTP isteklerini HTTPS'e yönlendiriyor. Bunun yerine alan adı kullanın.
 - **Alan adı açılmıyor ya da sertifika uyarısı veriyor**: Alan adının DNS A kaydı bu sunucuyu göstermeli ve Let's Encrypt'in sertifika verebilmesi için 80 ve 443 portları internetten erişilebilir olmalı.
 - **Core sağlıklı hale gelmiyor**: Nedenini görmek için `deckplane core logs` çalıştırın.
 - Diğer her şey için `deckplane doctor` çalıştırın, ardından çıktısıyla birlikte bir [issue açın](https://github.com/deckplane/cli/issues).

@@ -24,7 +24,7 @@ go build -o deckplane .
 go test ./...
 ```
 
-To try `deckplane core install` without the private registry, build a Core image locally and set `DECKPLANE_DEV=1` (see the README's Development section). Use `--dir` with a temporary folder and a free `--port` so you do not touch a real installation.
+To try `deckplane core install` without the private registry, build a Core image locally and set `DECKPLANE_DEV=1` (see the README's Development section). Use `--dir` with a temporary folder so you do not touch a real installation; port 80 must be free unless a Traefik already runs in Docker.
 
 ## Project layout
 

@@ -50,22 +50,25 @@ The installer:
 
 1. checks Docker,
 2. asks for your license key (hidden while you type) and checks it with Deckplane,
-3. asks how people will reach Core: your own domain over HTTPS, or a port on this machine (see below),
+3. asks how people will reach Core: your own domain over HTTPS, or this server's IP address (see below),
 4. generates all passwords and secrets for you,
 5. downloads and starts Core and its database, and waits until it is healthy,
 6. offers to create your first admin account.
 
 At the end it prints the address to open. Running `install` again is safe: your data and secrets are kept.
 
-### Domain (HTTPS) or port
+### Domain or IP address
+
+Core never opens a port of its own: it always sits behind [Traefik](https://traefik.io). If a Traefik already runs on the server in Docker, the installer finds it, reads its network, certificate resolver and entrypoints, and asks you to confirm. If there is none, Deckplane runs its own.
 
 | Choice | What you get | What you need |
 |---|---|---|
-| **Your domain, Traefik already running** | `https://deckplane.example.com` through your Traefik | Nothing else: the installer finds your Traefik and reads its network, certificate resolver and HTTPS entrypoint, then asks you to confirm |
-| **Your domain, no Traefik** | `https://deckplane.example.com` with a free Let's Encrypt certificate | The domain's DNS pointing to this server, ports 80 and 443 free, and an email address. The installer runs its own Traefik next to Core |
-| **A port** | `http://server-ip:3000` | Nothing; good for trying Deckplane or private networks |
+| **Your domain** (recommended) | `https://deckplane.example.com` with a certificate | The domain's DNS pointing to this server. With your own Traefik, nothing else; with Deckplane's, ports 80 and 443 free and an email address for Let's Encrypt |
+| **IP address, no domain** | `http://203.0.113.10` (plain HTTP on port 80) | Port 80 free, or your own Traefik's HTTP entrypoint. Good for trying Deckplane or private networks |
 
-When Deckplane runs its own Traefik, other apps on the server can use it too: attach them to the `deckplane-proxy` Docker network and add Traefik labels with entrypoint `websecure` and certificate resolver `le`.
+With your own Traefik and no domain, Core answers every request on port 80 that no other app claims. This does not work if your Traefik redirects all HTTP to HTTPS; use a domain then.
+
+When Deckplane runs its own Traefik, other apps on the server can use it too: attach them to the `deckplane-proxy` Docker network and add Traefik labels (entrypoint `websecure` and certificate resolver `le` with a domain, entrypoint `web` without).
 
 > On Linux, `sudo` is needed because Core is installed in `/var/lib/deckplane`. On macOS and Windows it goes to `~/.deckplane/core` and no `sudo` is needed.
 
@@ -74,11 +77,12 @@ When Deckplane runs its own Traefik, other apps on the server can use it too: at
 ```bash
 export DECKPLANE_LICENSE_KEY=dpl_...
 export DECKPLANE_ADMIN_PASSWORD='a-strong-password'
-sudo -E deckplane core install --yes --port 3000 \
+sudo -E deckplane core install --yes \
+  --domain deckplane.example.com --acme-email you@example.com \
   --admin-email admin@example.com --admin-name "Admin"
 ```
 
-To serve Core on your domain instead, replace `--port 3000` with `--domain deckplane.example.com`. A running Traefik is detected and used; if there is none, add `--acme-email you@example.com` and Deckplane runs its own. When detection cannot read your Traefik's settings, pass them with `--traefik-network`, `--cert-resolver` and `--traefik-entrypoint`.
+A running Traefik is detected and used, and then `--acme-email` is not needed; otherwise Deckplane runs its own. When detection cannot read your Traefik's settings, pass them with `--traefik-network`, `--cert-resolver` and `--traefik-entrypoint`. Leave out `--domain` and `--acme-email` to serve Core on the server's IP address over HTTP.
 
 ## Connect a server (agent)
 
@@ -126,8 +130,8 @@ Each folder holds a `.env` (settings and secrets, readable only by its owner) an
 
 - **"Docker is not installed" or "not running"**: the message tells you the exact command or app to start.
 - **"Your license key was not accepted"**: check in Deckplane Cloud → Licenses that the key is active and not expired or revoked, and that you copied all of it.
-- **"Port 3000 is already in use"** (port mode): install on another port, e.g. `--port 8080`, or use a domain.
-- **"Port 80/443 is already in use"** (domain mode without Traefik): another web server holds the HTTPS ports. If it is Traefik, run the installer again and choose it; otherwise stop it or use port mode.
+- **"Port 80 (or 443) is already in use"**: Deckplane wants to run its own Traefik, but another program holds the port; the message names it when it can. If it is a Traefik running in Docker, use it with `--traefik-network <its network>`. Otherwise stop that program (for example `systemctl stop nginx`) and run the installer again.
+- **The IP address does not open** (no domain, your own Traefik): your Traefik probably redirects all HTTP to HTTPS. Use a domain instead.
 - **The domain does not open or shows a certificate warning**: its DNS A record must point to this server, and ports 80 and 443 must be reachable from the internet so Let's Encrypt can issue the certificate.
 - **Core does not become healthy**: run `deckplane core logs` to see why.
 - Anything else: run `deckplane doctor`, then [open an issue](https://github.com/deckplane/cli/issues) with its output.
