@@ -14,8 +14,9 @@ type Traefik struct {
 	Container      string
 	Networks       []string
 	CertResolver   string
-	Entrypoint     string // the HTTPS entrypoint, e.g. "websecure"
-	HTTPEntrypoint string // the plain HTTP entrypoint on :80, e.g. "web"
+	Entrypoint     string   // the HTTPS entrypoint, e.g. "websecure"
+	HTTPEntrypoint string   // the plain HTTP entrypoint on :80, e.g. "web"
+	Entrypoints    []string // every entrypoint found in its configuration
 }
 
 type inspected struct {
@@ -68,7 +69,8 @@ func FindTraefik(skip string) []Traefik {
 		}
 		sort.Slice(t.Networks, func(i, j int) bool { return networkRank(t.Networks[i]) < networkRank(t.Networks[j]) })
 		args := append(append([]string{}, c.Config.Cmd...), c.Args...)
-		t.CertResolver, t.Entrypoint, t.HTTPEntrypoint = parseTraefikConfig(args, c.Config.Env)
+		cfg := parseTraefikConfig(args, c.Config.Env)
+		t.CertResolver, t.Entrypoint, t.HTTPEntrypoint, t.Entrypoints = cfg.resolver, cfg.https, cfg.http, cfg.entrypoints
 		if t.CertResolver == "" {
 			t.CertResolver = mostCommon(resolverVotes)
 		}
@@ -92,11 +94,19 @@ func networkRank(n string) int {
 	return 1
 }
 
-// parseTraefikConfig reads the certificate resolver name and the HTTPS and
-// HTTP entrypoints from Traefik's command-line flags or environment. The
-// HTTPS entrypoint is the one on :443, or else the only one not on :80
-// (Traefik often listens on another port inside its container).
-func parseTraefikConfig(args, env []string) (resolver, entrypoint, httpEntrypoint string) {
+type traefikConfig struct {
+	resolver    string
+	https       string
+	http        string
+	entrypoints []string
+}
+
+// parseTraefikConfig reads the certificate resolver name and the entrypoints
+// from Traefik's command-line flags or environment. The HTTPS entrypoint is
+// the one on :443, or else the only one not on :80 (Traefik often listens on
+// another port inside its container).
+func parseTraefikConfig(args, env []string) traefikConfig {
+	var resolver string
 	addresses := map[string]string{}
 	for _, a := range args {
 		a = strings.TrimLeft(a, "-")
@@ -122,21 +132,24 @@ func parseTraefikConfig(args, env []string) (resolver, entrypoint, httpEntrypoin
 		}
 	}
 
+	cfg := traefikConfig{resolver: resolver}
 	var others []string
 	for name, address := range addresses {
+		cfg.entrypoints = append(cfg.entrypoints, name)
 		switch {
 		case strings.HasSuffix(address, ":443"):
-			entrypoint = name
+			cfg.https = name
 		case strings.HasSuffix(address, ":80"):
-			httpEntrypoint = name
+			cfg.http = name
 		default:
 			others = append(others, name)
 		}
 	}
-	if entrypoint == "" && len(others) == 1 {
-		entrypoint = others[0]
+	sort.Strings(cfg.entrypoints)
+	if cfg.https == "" && len(others) == 1 {
+		cfg.https = others[0]
 	}
-	return resolver, entrypoint, httpEntrypoint
+	return cfg
 }
 
 // labelVotes counts the resolvers and TLS entrypoints other containers route

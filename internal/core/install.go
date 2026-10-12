@@ -7,6 +7,7 @@ import (
 	"net/mail"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -279,6 +280,9 @@ func useTraefik(s *Settings, t docker.Traefik, o InstallOptions, interactive boo
 		s.TraefikNetwork = t.Networks[0]
 	}
 
+	if err := checkEntrypoint(t, o.Entrypoint); err != nil {
+		return err
+	}
 	var err error
 	if !s.HTTPS() {
 		if s.HTTPEntrypoint, err = detectedOrAsk(t.HTTPEntrypoint, "Traefik HTTP entrypoint name (port 80):", "web", interactive); err != nil {
@@ -299,6 +303,22 @@ func useTraefik(s *Settings, t docker.Traefik, o InstallOptions, interactive boo
 	}
 	ui.Info("Network %s · certificate resolver %s · entrypoint %s", s.TraefikNetwork, s.CertResolver, s.Entrypoint)
 	return nil
+}
+
+// checkEntrypoint rejects an --traefik-entrypoint the detected Traefik does
+// not have; a router on an unknown entrypoint would never receive traffic.
+func checkEntrypoint(t docker.Traefik, name string) error {
+	if name == "" || len(t.Entrypoints) == 0 || slices.Contains(t.Entrypoints, name) {
+		return nil
+	}
+	hint := fmt.Sprintf("Its entrypoints are: %s.", strings.Join(t.Entrypoints, ", "))
+	if t.Entrypoint != "" {
+		hint += fmt.Sprintf(" For HTTPS use:  --traefik-entrypoint %s", t.Entrypoint)
+	}
+	if slices.Contains(t.Networks, name) || docker.NetworkExists(name) {
+		hint += fmt.Sprintf("\n%q is a Docker network — pass it with --traefik-network instead.", name)
+	}
+	return ui.NewError(fmt.Sprintf("Traefik (%s) has no entrypoint %q", t.Container, name), hint, nil)
 }
 
 // detectedOrAsk returns what was read from Traefik, or asks with def as the

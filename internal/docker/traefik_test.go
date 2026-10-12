@@ -1,26 +1,29 @@
 package docker
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestParseTraefikConfigFromFlags(t *testing.T) {
-	resolver, entrypoint, http := parseTraefikConfig([]string{
+	cfg := parseTraefikConfig([]string{
 		"--providers.docker=true",
 		"--entrypoints.web.address=:80",
 		"--entrypoints.https.address=:443",
 		"--certificatesResolvers.myresolver.acme.email=a@b.c",
 	}, nil)
-	if resolver != "myresolver" || entrypoint != "https" || http != "web" {
-		t.Fatalf("got resolver %q entrypoint %q http %q", resolver, entrypoint, http)
+	if cfg.resolver != "myresolver" || cfg.https != "https" || cfg.http != "web" || strings.Join(cfg.entrypoints, ",") != "https,web" {
+		t.Fatalf("got %+v", cfg)
 	}
 }
 
 func TestParseTraefikConfigFromEnv(t *testing.T) {
-	resolver, entrypoint, _ := parseTraefikConfig(nil, []string{
+	cfg := parseTraefikConfig(nil, []string{
 		"TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL=a@b.c",
 		"TRAEFIK_ENTRYPOINTS_WEBSECURE_ADDRESS=:443",
 	})
-	if resolver != "letsencrypt" || entrypoint != "websecure" {
-		t.Fatalf("got resolver %q entrypoint %q", resolver, entrypoint)
+	if cfg.resolver != "letsencrypt" || cfg.https != "websecure" {
+		t.Fatalf("got %+v", cfg)
 	}
 }
 
@@ -44,12 +47,12 @@ func TestNetworkRankPrefersProxyNetworks(t *testing.T) {
 }
 
 func TestParseTraefikConfigPicksOnlyNonHTTPEntrypoint(t *testing.T) {
-	_, entrypoint, http := parseTraefikConfig([]string{"--entrypoints.web.address=:80", "--entrypoints.secure.address=:8443"}, nil)
-	if entrypoint != "secure" || http != "web" {
-		t.Fatalf("entrypoint = %q, http = %q", entrypoint, http)
+	cfg := parseTraefikConfig([]string{"--entrypoints.web.address=:80", "--entrypoints.secure.address=:8443"}, nil)
+	if cfg.https != "secure" || cfg.http != "web" {
+		t.Fatalf("got %+v", cfg)
 	}
-	_, entrypoint, _ = parseTraefikConfig([]string{"--entrypoints.a.address=:8443", "--entrypoints.b.address=:9443"}, nil)
-	if entrypoint != "" {
-		t.Fatalf("ambiguous entrypoints should not be guessed, got %q", entrypoint)
+	cfg = parseTraefikConfig([]string{"--entrypoints.a.address=:8443", "--entrypoints.b.address=:9443"}, nil)
+	if cfg.https != "" {
+		t.Fatalf("ambiguous entrypoints should not be guessed, got %q", cfg.https)
 	}
 }
