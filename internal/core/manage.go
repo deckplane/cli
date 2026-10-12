@@ -93,6 +93,9 @@ func (in *Installation) Start() error {
 		return err
 	}
 	ui.Step("Starting Deckplane Core")
+	if err := releaseLegacyContainers(); err != nil {
+		return err
+	}
 	if err := in.Project.Run("up", "--detach"); err != nil {
 		return err
 	}
@@ -106,6 +109,9 @@ func (in *Installation) Start() error {
 // Stop stops the containers without removing anything.
 func (in *Installation) Stop() error {
 	ui.Step("Stopping Deckplane Core")
+	if err := releaseLegacyContainers(); err != nil {
+		return err
+	}
 	if err := in.Project.Run("stop"); err != nil {
 		return err
 	}
@@ -116,6 +122,9 @@ func (in *Installation) Stop() error {
 // Restart recreates the Core container so .env changes take effect.
 func (in *Installation) Restart() error {
 	ui.Step("Restarting Deckplane Core")
+	if err := releaseLegacyContainers(); err != nil {
+		return err
+	}
 	if err := in.Project.Run("up", "--detach", "--force-recreate", serviceName); err != nil {
 		return err
 	}
@@ -180,6 +189,9 @@ func (in *Installation) Uninstall(removeData, yes bool) error {
 		}
 	}
 	ui.Step("Removing Deckplane Core containers")
+	if err := releaseLegacyContainers(); err != nil {
+		return err
+	}
 	args := []string{"down", "--remove-orphans"}
 	if removeData {
 		args = append(args, "--volumes")

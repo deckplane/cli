@@ -21,6 +21,14 @@ const (
 
 	DefaultLicenseAPI = "https://api.deckplane.com"
 
+	// projectName must stay unique on the host: Docker Compose treats every
+	// container of a project as its own, and `up --remove-orphans` deletes
+	// the ones its file does not list. Deckplane Cloud runs as "deckplane".
+	projectName = "deckplane-core"
+	// legacyProject is the project name used up to v0.1.0.
+	legacyProject = "deckplane"
+	dbVolume      = "deckplane_pgdata"
+	certVolume    = "deckplane_letsencrypt"
 	containerName = "deckplane-core"
 	traefikName   = "deckplane-traefik"
 	// bundledNetwork is the proxy network of the Traefik the CLI runs itself;

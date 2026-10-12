@@ -90,7 +90,7 @@ func corePublishesNoPort(t *testing.T, out string) {
 func TestComposeBundledWithoutDomain(t *testing.T) {
 	out := composeFor(t, Settings{Proxy: ProxyBundled})
 	expect(t, "bundled HTTP", out,
-		[]string{"registry.deckplane.com/deckplane/core:latest", "image: " + traefikImage, `"80:80"`,
+		[]string{"name: deckplane-core\n", "name: deckplane_pgdata", "name: deckplane_letsencrypt","registry.deckplane.com/deckplane/core:latest", "image: " + traefikImage, `"80:80"`,
 			"PathPrefix(`/`)", "priority=1", "entrypoints=web", "name: deckplane-proxy"},
 		[]string{`"443:443"`, "acme", "tls=true", "external: true"})
 	corePublishesNoPort(t, out)

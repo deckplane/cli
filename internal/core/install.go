@@ -429,6 +429,9 @@ func pullAndStart(p docker.Project, s Settings) error {
 		return ui.NewError("Downloading the images failed", "Run `deckplane doctor` to check the connection.", err)
 	}
 	ui.Step("Starting Deckplane Core")
+	if err := releaseLegacyContainers(); err != nil {
+		return err
+	}
 	if err := p.Run("up", "--detach", "--remove-orphans"); err != nil {
 		return err
 	}

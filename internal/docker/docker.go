@@ -193,6 +193,26 @@ func ContainerState(name string) string {
 	return strings.TrimSpace(string(out))
 }
 
+// ContainerProject returns the Compose project a container belongs to, or
+// "" when it does not exist or is not managed by Compose.
+func ContainerProject(name string) string {
+	out, err := exec.Command("docker", "inspect", "--format",
+		`{{index .Config.Labels "com.docker.compose.project"}}`, name).Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// RemoveContainer force-removes a container; its volumes are kept.
+func RemoveContainer(name string) error {
+	out, err := exec.Command("docker", "rm", "--force", name).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("docker rm %s: %s", name, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
 // ContainerImage returns the image reference a container was created from.
 func ContainerImage(name string) string {
 	out, err := exec.Command("docker", "inspect", "--format", "{{.Config.Image}}", name).Output()
