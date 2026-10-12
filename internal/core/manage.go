@@ -135,6 +135,10 @@ func (in *Installation) Update(version string) error {
 	if version != "" {
 		s.Version = version
 	}
+	// Installs from v0.1.0 move behind a Traefik here, which needs port 80.
+	if err := checkAccess(s); err != nil {
+		return err
+	}
 	s.store(in.Env)
 	fillSecrets(in.Env)
 	if err := in.Env.Save(); err != nil {

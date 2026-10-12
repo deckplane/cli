@@ -1,6 +1,6 @@
 // Package agent installs and manages the Deckplane agent, which connects a
-// Docker host to Deckplane Core. The agent image is public, so no registry
-// sign-in is needed.
+// Docker host to Deckplane Core. The agent image is public on the Deckplane
+// registry, so no sign-in is needed.
 package agent
 
 import (
@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	imageRepo     = "ghcr.io/deckplane/deckplane-agent"
+	imageRepo     = "registry.deckplane.com/deckplane/agent"
 	containerName = "deckplane-agent"
 	envFileName   = ".env"
 	composeFile   = "compose.yaml"
