@@ -52,28 +52,29 @@ services:
       timeout: 5s
       retries: 10
       start_period: 20s
-{{- if eq .Expose "domain"}}
     networks:
       - internal
       - traefik
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network={{.TraefikNetwork}}"
+{{- if .HTTPS}}
       - "traefik.http.routers.deckplane-core.rule=Host(` + "`{{.Domain}}`" + `)"
       - "traefik.http.routers.deckplane-core.entrypoints={{.Entrypoint}}"
       - "traefik.http.routers.deckplane-core.tls=true"
       - "traefik.http.routers.deckplane-core.tls.certresolver={{.CertResolver}}"
+{{- else}}
+      # No domain: answer every request on the server's address that no
+      # other router claims (priority 1 is the lowest).
+      - "traefik.http.routers.deckplane-core.rule=PathPrefix(` + "`/`" + `)"
+      - "traefik.http.routers.deckplane-core.priority=1"
+      - "traefik.http.routers.deckplane-core.entrypoints={{.HTTPEntrypoint}}"
+{{- end}}
       - "traefik.http.services.deckplane-core.loadbalancer.server.port=3000"
       - "traefik.http.services.deckplane-core.loadbalancer.responseforwarding.flushinterval=0"
-{{- else}}
-    ports:
-      - "{{.Port}}:3000"
-    networks:
-      - internal
-{{- end}}
 {{- if .Bundled}}
 
-  # Reverse proxy with free HTTPS certificates from Let's Encrypt.
+  # Reverse proxy in front of Core{{if .HTTPS}}, with free HTTPS certificates from Let's Encrypt{{end}}.
   traefik:
     image: ` + traefikImage + `
     container_name: ` + traefikName + `
@@ -82,15 +83,19 @@ services:
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
       - --entrypoints.web.address=:80
+{{- if .HTTPS}}
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.websecure.address=:443
       - --certificatesresolvers.le.acme.email={{.ACMEEmail}}
       - --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
       - --certificatesresolvers.le.acme.httpchallenge.entrypoint=web
+{{- end}}
     ports:
       - "80:80"
+{{- if .HTTPS}}
       - "443:443"
+{{- end}}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - letsencrypt:/letsencrypt
@@ -106,12 +111,10 @@ volumes:
 
 networks:
   internal:
-{{- if eq .Expose "domain"}}
   traefik:
     name: {{.TraefikNetwork}}
 {{- if not .Bundled}}
     external: true
-{{- end}}
 {{- end}}
 `))
 

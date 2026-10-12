@@ -48,53 +48,93 @@ func TestFillSecretsFreshInstall(t *testing.T) {
 	}
 }
 
-func TestComposeModes(t *testing.T) {
+func composeFor(t *testing.T, s Settings) string {
+	t.Helper()
 	dir := t.TempDir()
-	s := Settings{Port: 8080}.withDefaults()
-	if err := writeCompose(dir, s); err != nil {
+	if err := writeCompose(dir, s.withDefaults()); err != nil {
 		t.Fatal(err)
 	}
-	out, _ := os.ReadFile(filepath.Join(dir, composeFile))
-	for _, want := range []string{"registry.deckplane.com/deckplane/core:latest", `"8080:3000"`} {
-		if !strings.Contains(string(out), want) {
-			t.Errorf("port mode compose missing %q", want)
-		}
+	out, err := os.ReadFile(filepath.Join(dir, composeFile))
+	if err != nil {
+		t.Fatal(err)
 	}
-	if strings.Contains(string(out), "traefik") {
-		t.Error("port mode compose mentions traefik")
-	}
+	return string(out)
+}
 
-	s = Settings{Expose: ExposeDomain, Domain: "dp.example.com", TraefikNetwork: "proxy", Version: "v1.2.0"}.withDefaults()
-	if err := writeCompose(dir, s); err != nil {
-		t.Fatal(err)
-	}
-	out, _ = os.ReadFile(filepath.Join(dir, composeFile))
-	for _, want := range []string{"Host(`dp.example.com`)", "name: proxy", "external: true", "core:v1.2.0", "certresolver=le", "entrypoints=websecure"} {
-		if !strings.Contains(string(out), want) {
-			t.Errorf("domain mode compose missing %q", want)
+func expect(t *testing.T, mode, out string, want, unwanted []string) {
+	t.Helper()
+	for _, w := range want {
+		if !strings.Contains(out, w) {
+			t.Errorf("%s compose missing %q", mode, w)
 		}
 	}
-	if strings.Contains(string(out), "ports:") || strings.Contains(string(out), "deckplane-traefik") {
-		t.Error("existing-Traefik compose publishes ports or adds its own Traefik")
+	for _, u := range unwanted {
+		if strings.Contains(out, u) {
+			t.Errorf("%s compose must not contain %q", mode, u)
+		}
 	}
 }
 
-func TestComposeBundledTraefik(t *testing.T) {
-	dir := t.TempDir()
-	s := Settings{Expose: ExposeDomain, Domain: "dp.example.com", Proxy: ProxyBundled, ACMEEmail: "ops@example.com"}.withDefaults()
-	if err := writeCompose(dir, s); err != nil {
-		t.Fatal(err)
+// Core itself never publishes a port: only Traefik does.
+func corePublishesNoPort(t *testing.T, out string) {
+	t.Helper()
+	core := out[strings.Index(out, "  core:"):]
+	if i := strings.Index(core, "\n  traefik:"); i >= 0 {
+		core = core[:i]
 	}
-	out, _ := os.ReadFile(filepath.Join(dir, composeFile))
-	for _, want := range []string{
-		"image: " + traefikImage, "acme.email=ops@example.com", `"443:443"`, "name: deckplane-proxy",
-		"traefik.docker.network=deckplane-proxy", "entrypoints=websecure", "letsencrypt:",
-	} {
-		if !strings.Contains(string(out), want) {
-			t.Errorf("bundled compose missing %q", want)
-		}
+	if strings.Contains(core, "ports:") {
+		t.Error("the core service publishes a port")
 	}
-	if strings.Contains(string(out), "external: true") {
-		t.Error("bundled proxy network must be created by the stack, not external")
+}
+
+func TestComposeBundledWithoutDomain(t *testing.T) {
+	out := composeFor(t, Settings{Proxy: ProxyBundled})
+	expect(t, "bundled HTTP", out,
+		[]string{"registry.deckplane.com/deckplane/core:latest", "image: " + traefikImage, `"80:80"`,
+			"PathPrefix(`/`)", "priority=1", "entrypoints=web", "name: deckplane-proxy"},
+		[]string{`"443:443"`, "acme", "tls=true", "external: true"})
+	corePublishesNoPort(t, out)
+}
+
+func TestComposeBundledWithDomain(t *testing.T) {
+	out := composeFor(t, Settings{Domain: "dp.example.com", Proxy: ProxyBundled, ACMEEmail: "ops@example.com"})
+	expect(t, "bundled HTTPS", out,
+		[]string{"Host(`dp.example.com`)", "acme.email=ops@example.com", `"443:443"`, "redirections.entrypoint.to=websecure",
+			"traefik.docker.network=deckplane-proxy", "entrypoints=websecure", "certresolver=le", "letsencrypt:"},
+		[]string{"PathPrefix", "external: true"})
+	corePublishesNoPort(t, out)
+}
+
+func TestComposeExistingTraefik(t *testing.T) {
+	out := composeFor(t, Settings{Domain: "dp.example.com", Proxy: ProxyExisting, TraefikNetwork: "proxy", CertResolver: "myle", Entrypoint: "secure", Version: "v1.2.0"})
+	expect(t, "existing HTTPS", out,
+		[]string{"Host(`dp.example.com`)", "name: proxy", "external: true", "core:v1.2.0", "certresolver=myle", "entrypoints=secure"},
+		[]string{"ports:", "deckplane-traefik"})
+
+	out = composeFor(t, Settings{Proxy: ProxyExisting, TraefikNetwork: "proxy", HTTPEntrypoint: "http"})
+	expect(t, "existing HTTP", out,
+		[]string{"PathPrefix(`/`)", "entrypoints=http", "external: true"},
+		[]string{"ports:", "deckplane-traefik", "tls=true"})
+}
+
+func TestOldPortInstallMovesBehindTraefik(t *testing.T) {
+	env := envfile.New("")
+	env.Set("DECKPLANE_EXPOSE", "port")
+	env.Set("DECKPLANE_PORT", "3000")
+	s := settingsFrom(env)
+	if !s.Bundled() || s.HTTPS() {
+		t.Fatalf("old port install: proxy %q domain %q", s.Proxy, s.Domain)
+	}
+	s.store(env)
+	if _, ok := env.Lookup("DECKPLANE_PORT"); ok {
+		t.Error("DECKPLANE_PORT was kept")
+	}
+
+	env = envfile.New("")
+	env.Set("DECKPLANE_EXPOSE", "domain")
+	env.Set("DECKPLANE_DOMAIN", "dp.example.com")
+	env.Set("TRAEFIK_NETWORK", "proxy")
+	if s := settingsFrom(env); s.Proxy != ProxyExisting || s.TraefikNetwork != "proxy" {
+		t.Fatalf("old domain install: %+v", s)
 	}
 }

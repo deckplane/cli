@@ -57,8 +57,7 @@ func coreInstallCmd() *kommando.Command {
 		Flags: []kommando.Flag{
 			{Name: "license-key", Short: 'k', Type: kommando.FlagString, Env: "DECKPLANE_LICENSE_KEY", Description: "license key from Deckplane Cloud → Licenses (dpl_...)"},
 			{Name: "licence-key", Type: kommando.FlagString, Description: "same as --license-key"},
-			{Name: "port", Short: 'p', Type: kommando.FlagInt, Description: "port to open Core on (default 3000)"},
-			{Name: "domain", Type: kommando.FlagString, Description: "serve Core on this domain over HTTPS (uses the Traefik on this machine, or runs one)"},
+			{Name: "domain", Type: kommando.FlagString, Description: "serve Core on this domain over HTTPS (default: the server's IP over HTTP)"},
 			{Name: "acme-email", Type: kommando.FlagString, Description: "email for Let's Encrypt when Deckplane runs its own Traefik"},
 			{Name: "traefik-network", Type: kommando.FlagString, Description: "use the Traefik on this Docker network (default: detected)"},
 			{Name: "cert-resolver", Type: kommando.FlagString, Description: "certificate resolver of your Traefik (default: detected, or le)"},
@@ -72,10 +71,6 @@ func coreInstallCmd() *kommando.Command {
 			yesFlag,
 		},
 		Execute: func(ctx *kommando.Context) error {
-			port, err := integer(ctx, "port")
-			if err != nil {
-				return err
-			}
 			key := str(ctx, "license-key")
 			if key == "" {
 				key = str(ctx, "licence-key")
@@ -86,7 +81,6 @@ func coreInstallCmd() *kommando.Command {
 				LicenseAPIURL:  str(ctx, "license-api-url"),
 				Registry:       str(ctx, "registry"),
 				Version:        str(ctx, "version"),
-				Port:           port,
 				Domain:         str(ctx, "domain"),
 				TraefikNetwork: str(ctx, "traefik-network"),
 				CertResolver:   str(ctx, "cert-resolver"),

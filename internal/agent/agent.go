@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -117,7 +116,7 @@ func Install(o InstallOptions) error {
 		if !interactive {
 			return ui.NewError("The Deckplane Core address is required", "Pass it with --server-url https://deckplane.example.com", nil)
 		}
-		if serverURL, err = ui.AskRequired("Deckplane Core address (e.g. http://10.0.0.5:3000):", "", validateURL); err != nil {
+		if serverURL, err = ui.AskRequired("Deckplane Core address (e.g. https://deckplane.example.com):", "", validateURL); err != nil {
 			return err
 		}
 	}
@@ -186,14 +185,11 @@ func localCore() (string, string) {
 	if err != nil {
 		return "", ""
 	}
-	if env.Get("DECKPLANE_EXPOSE") == "domain" && env.Get("DECKPLANE_DOMAIN") != "" {
-		return "https://" + env.Get("DECKPLANE_DOMAIN"), env.Get("AGENT_BOOTSTRAP_TOKEN")
+	if domain := env.Get("DECKPLANE_DOMAIN"); domain != "" {
+		return "https://" + domain, env.Get("AGENT_BOOTSTRAP_TOKEN")
 	}
-	port := env.Get("DECKPLANE_PORT")
-	if _, err := strconv.Atoi(port); err != nil {
-		port = "3000"
-	}
-	return "http://host.docker.internal:" + port, env.Get("AGENT_BOOTSTRAP_TOKEN")
+	// Without a domain, Traefik serves Core on port 80 of this machine.
+	return "http://host.docker.internal", env.Get("AGENT_BOOTSTRAP_TOKEN")
 }
 
 func validateURL(v string) error {
