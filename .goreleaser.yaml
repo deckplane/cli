@@ -47,3 +47,6 @@ release:
   github:
     owner: deckplane
     name: cli
+  # Re-running a tag (e.g. after moving it) updates its release in place.
+  mode: replace
+  replace_existing_artifacts: true
