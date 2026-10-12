@@ -49,3 +49,14 @@ func TestQuoteFallsBackToDoubleQuotes(t *testing.T) {
 		t.Fatalf("round trip = %q", got)
 	}
 }
+
+func TestDelete(t *testing.T) {
+	f := New("")
+	f.Set("A", "1")
+	f.Set("B", "2")
+	f.Delete("A")
+	f.Delete("missing")
+	if _, ok := f.Lookup("A"); ok || f.Get("B") != "2" || len(f.Keys()) != 1 {
+		t.Fatalf("keys after delete: %v", f.Keys())
+	}
+}

@@ -74,6 +74,16 @@ func (f *File) Set(key, value string) {
 	f.lines = append(f.lines, line{key: key, value: value})
 }
 
+// Delete removes key if present.
+func (f *File) Delete(key string) {
+	for i, l := range f.lines {
+		if l.key == key {
+			f.lines = append(f.lines[:i], f.lines[i+1:]...)
+			return
+		}
+	}
+}
+
 // SetDefault sets key only when it is missing or empty.
 func (f *File) SetDefault(key, value string) {
 	if f.Get(key) == "" {

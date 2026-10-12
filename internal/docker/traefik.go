@@ -11,10 +11,11 @@ import (
 // as far as it can be read from its container and from other containers'
 // routing labels. Empty fields mean "could not tell".
 type Traefik struct {
-	Container    string
-	Networks     []string
-	CertResolver string
-	Entrypoint   string // the HTTPS entrypoint, e.g. "websecure"
+	Container      string
+	Networks       []string
+	CertResolver   string
+	Entrypoint     string // the HTTPS entrypoint, e.g. "websecure"
+	HTTPEntrypoint string // the plain HTTP entrypoint on :80, e.g. "web"
 }
 
 type inspected struct {
@@ -67,7 +68,7 @@ func FindTraefik(skip string) []Traefik {
 		}
 		sort.Slice(t.Networks, func(i, j int) bool { return networkRank(t.Networks[i]) < networkRank(t.Networks[j]) })
 		args := append(append([]string{}, c.Config.Cmd...), c.Args...)
-		t.CertResolver, t.Entrypoint = parseTraefikConfig(args, c.Config.Env)
+		t.CertResolver, t.Entrypoint, t.HTTPEntrypoint = parseTraefikConfig(args, c.Config.Env)
 		if t.CertResolver == "" {
 			t.CertResolver = mostCommon(resolverVotes)
 		}
@@ -91,11 +92,11 @@ func networkRank(n string) int {
 	return 1
 }
 
-// parseTraefikConfig reads the certificate resolver name and the HTTPS
-// entrypoint from Traefik's command-line flags or environment. The HTTPS
-// entrypoint is the one on :443, or else the only one not on :80 (Traefik
-// often listens on another port inside its container).
-func parseTraefikConfig(args, env []string) (resolver, entrypoint string) {
+// parseTraefikConfig reads the certificate resolver name and the HTTPS and
+// HTTP entrypoints from Traefik's command-line flags or environment. The
+// HTTPS entrypoint is the one on :443, or else the only one not on :80
+// (Traefik often listens on another port inside its container).
+func parseTraefikConfig(args, env []string) (resolver, entrypoint, httpEntrypoint string) {
 	addresses := map[string]string{}
 	for _, a := range args {
 		a = strings.TrimLeft(a, "-")
@@ -125,15 +126,17 @@ func parseTraefikConfig(args, env []string) (resolver, entrypoint string) {
 	for name, address := range addresses {
 		switch {
 		case strings.HasSuffix(address, ":443"):
-			return resolver, name
-		case !strings.HasSuffix(address, ":80"):
+			entrypoint = name
+		case strings.HasSuffix(address, ":80"):
+			httpEntrypoint = name
+		default:
 			others = append(others, name)
 		}
 	}
-	if len(others) == 1 {
+	if entrypoint == "" && len(others) == 1 {
 		entrypoint = others[0]
 	}
-	return resolver, entrypoint
+	return resolver, entrypoint, httpEntrypoint
 }
 
 // labelVotes counts the resolvers and TLS entrypoints other containers route

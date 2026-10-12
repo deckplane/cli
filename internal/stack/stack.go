@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
+	"regexp"
 	"strings"
 	"time"
 
@@ -64,6 +66,21 @@ func PortFree(port int) bool {
 	}
 	l.Close()
 	return true
+}
+
+var ssProcess = regexp.MustCompile(`users:\(\("([^"]+)",pid=(\d+)`)
+
+// PortUser names the process listening on a TCP port, like "nginx (pid 812)",
+// or returns "" when it cannot tell (no ss, not Linux, not root).
+func PortUser(port int) string {
+	out, err := exec.Command("ss", "-Hltnp", fmt.Sprintf("sport = :%d", port)).Output()
+	if err != nil {
+		return ""
+	}
+	if m := ssProcess.FindStringSubmatch(string(out)); m != nil {
+		return fmt.Sprintf("%s (pid %s)", m[1], m[2])
+	}
+	return ""
 }
 
 // LocalIP returns this machine's primary outbound IP address, used to show a

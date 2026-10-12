@@ -3,19 +3,19 @@ package docker
 import "testing"
 
 func TestParseTraefikConfigFromFlags(t *testing.T) {
-	resolver, entrypoint := parseTraefikConfig([]string{
+	resolver, entrypoint, http := parseTraefikConfig([]string{
 		"--providers.docker=true",
 		"--entrypoints.web.address=:80",
 		"--entrypoints.https.address=:443",
 		"--certificatesResolvers.myresolver.acme.email=a@b.c",
 	}, nil)
-	if resolver != "myresolver" || entrypoint != "https" {
-		t.Fatalf("got resolver %q entrypoint %q", resolver, entrypoint)
+	if resolver != "myresolver" || entrypoint != "https" || http != "web" {
+		t.Fatalf("got resolver %q entrypoint %q http %q", resolver, entrypoint, http)
 	}
 }
 
 func TestParseTraefikConfigFromEnv(t *testing.T) {
-	resolver, entrypoint := parseTraefikConfig(nil, []string{
+	resolver, entrypoint, _ := parseTraefikConfig(nil, []string{
 		"TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL=a@b.c",
 		"TRAEFIK_ENTRYPOINTS_WEBSECURE_ADDRESS=:443",
 	})
@@ -44,11 +44,11 @@ func TestNetworkRankPrefersProxyNetworks(t *testing.T) {
 }
 
 func TestParseTraefikConfigPicksOnlyNonHTTPEntrypoint(t *testing.T) {
-	_, entrypoint := parseTraefikConfig([]string{"--entrypoints.web.address=:80", "--entrypoints.secure.address=:8443"}, nil)
-	if entrypoint != "secure" {
-		t.Fatalf("entrypoint = %q", entrypoint)
+	_, entrypoint, http := parseTraefikConfig([]string{"--entrypoints.web.address=:80", "--entrypoints.secure.address=:8443"}, nil)
+	if entrypoint != "secure" || http != "web" {
+		t.Fatalf("entrypoint = %q, http = %q", entrypoint, http)
 	}
-	_, entrypoint = parseTraefikConfig([]string{"--entrypoints.a.address=:8443", "--entrypoints.b.address=:9443"}, nil)
+	_, entrypoint, _ = parseTraefikConfig([]string{"--entrypoints.a.address=:8443", "--entrypoints.b.address=:9443"}, nil)
 	if entrypoint != "" {
 		t.Fatalf("ambiguous entrypoints should not be guessed, got %q", entrypoint)
 	}
