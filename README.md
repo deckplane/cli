@@ -21,19 +21,19 @@ Not sure the machine is ready? Run `deckplane doctor`; it checks everything and 
 **Linux and macOS**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/deckplane/deckplane-cli/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/deckplane/cli/main/install.sh | sh
 ```
 
 **Windows (PowerShell)**
 
 ```powershell
-irm https://raw.githubusercontent.com/deckplane/deckplane-cli/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/deckplane/cli/main/install.ps1 | iex
 ```
 
 **With Go 1.26+**
 
 ```bash
-go install github.com/deckplane/deckplane-cli@latest
+go install github.com/deckplane/cli@latest
 ```
 
 Check it works with `deckplane version`.
@@ -130,7 +130,7 @@ Each folder holds a `.env` (settings and secrets, readable only by its owner) an
 - **"Port 80/443 is already in use"** (domain mode without Traefik): another web server holds the HTTPS ports. If it is Traefik, run the installer again and choose it; otherwise stop it or use port mode.
 - **The domain does not open or shows a certificate warning**: its DNS A record must point to this server, and ports 80 and 443 must be reachable from the internet so Let's Encrypt can issue the certificate.
 - **Core does not become healthy**: run `deckplane core logs` to see why.
-- Anything else: run `deckplane doctor`, then [open an issue](https://github.com/deckplane/deckplane-cli/issues) with its output.
+- Anything else: run `deckplane doctor`, then [open an issue](https://github.com/deckplane/cli/issues) with its output.
 
 ## Development
 

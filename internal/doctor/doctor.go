@@ -9,11 +9,11 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/deckplane/deckplane-cli/internal/core"
-	"github.com/deckplane/deckplane-cli/internal/docker"
-	"github.com/deckplane/deckplane-cli/internal/envfile"
-	"github.com/deckplane/deckplane-cli/internal/paths"
-	"github.com/deckplane/deckplane-cli/internal/ui"
+	"github.com/deckplane/cli/internal/core"
+	"github.com/deckplane/cli/internal/docker"
+	"github.com/deckplane/cli/internal/envfile"
+	"github.com/deckplane/cli/internal/paths"
+	"github.com/deckplane/cli/internal/ui"
 )
 
 type check struct {

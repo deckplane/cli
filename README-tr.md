@@ -21,19 +21,19 @@ Makinenin hazır olup olmadığından emin değilseniz `deckplane doctor` çalı
 **Linux ve macOS**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/deckplane/deckplane-cli/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/deckplane/cli/main/install.sh | sh
 ```
 
 **Windows (PowerShell)**
 
 ```powershell
-irm https://raw.githubusercontent.com/deckplane/deckplane-cli/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/deckplane/cli/main/install.ps1 | iex
 ```
 
 **Go 1.26+ ile**
 
 ```bash
-go install github.com/deckplane/deckplane-cli@latest
+go install github.com/deckplane/cli@latest
 ```
 
 Çalıştığını `deckplane version` ile kontrol edin.
@@ -130,7 +130,7 @@ Her klasörde bir `.env` dosyası (ayarlar ve gizli anahtarlar; yalnızca sahibi
 - **"Port 80/443 is already in use"** (Traefik olmadan alan adı modu): HTTPS portlarını başka bir web sunucusu kullanıyor. Bu bir Traefik ise kurulumu tekrar çalıştırıp onu seçin; değilse durdurun ya da port modunu kullanın.
 - **Alan adı açılmıyor ya da sertifika uyarısı veriyor**: Alan adının DNS A kaydı bu sunucuyu göstermeli ve Let's Encrypt'in sertifika verebilmesi için 80 ve 443 portları internetten erişilebilir olmalı.
 - **Core sağlıklı hale gelmiyor**: Nedenini görmek için `deckplane core logs` çalıştırın.
-- Diğer her şey için `deckplane doctor` çalıştırın, ardından çıktısıyla birlikte bir [issue açın](https://github.com/deckplane/deckplane-cli/issues).
+- Diğer her şey için `deckplane doctor` çalıştırın, ardından çıktısıyla birlikte bir [issue açın](https://github.com/deckplane/cli/issues).
 
 ## Geliştirme
 

@@ -15,9 +15,9 @@ builds:
       - -trimpath
     ldflags:
       - -s -w
-      - -X github.com/deckplane/deckplane-cli/internal/buildinfo.Version=v{{ .Version }}
-      - -X github.com/deckplane/deckplane-cli/internal/buildinfo.Commit={{ .ShortCommit }}
-      - -X github.com/deckplane/deckplane-cli/internal/buildinfo.Date={{ .Date }}
+      - -X github.com/deckplane/cli/internal/buildinfo.Version=v{{ .Version }}
+      - -X github.com/deckplane/cli/internal/buildinfo.Commit={{ .ShortCommit }}
+      - -X github.com/deckplane/cli/internal/buildinfo.Date={{ .Date }}
 
 # install.sh and install.ps1 download these exact names.
 archives:
@@ -46,4 +46,4 @@ changelog:
 release:
   github:
     owner: deckplane
-    name: deckplane-cli
+    name: cli

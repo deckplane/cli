@@ -1,4 +1,4 @@
-module github.com/deckplane/deckplane-cli
+module github.com/deckplane/cli
 
 go 1.26.0
 

@@ -8,8 +8,8 @@ import (
 	"net/mail"
 	"os"
 
-	"github.com/deckplane/deckplane-cli/internal/docker"
-	"github.com/deckplane/deckplane-cli/internal/ui"
+	"github.com/deckplane/cli/internal/docker"
+	"github.com/deckplane/cli/internal/ui"
 )
 
 // Core's API is only reachable from inside its container in domain mode, so

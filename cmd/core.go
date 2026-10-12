@@ -3,9 +3,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/deckplane/deckplane-cli/internal/core"
-	"github.com/deckplane/deckplane-cli/internal/paths"
-	"github.com/deckplane/deckplane-cli/internal/ui"
+	"github.com/deckplane/cli/internal/core"
+	"github.com/deckplane/cli/internal/paths"
+	"github.com/deckplane/cli/internal/ui"
 	"github.com/yigit433/kommando/v3"
 )
 

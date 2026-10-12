@@ -1,6 +1,6 @@
 # Installs the deckplane CLI on Windows:
 #
-#   irm https://raw.githubusercontent.com/deckplane/deckplane-cli/main/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/deckplane/cli/main/install.ps1 | iex
 #
 # Optional environment variables:
 #   DECKPLANE_VERSION       release to install, e.g. v0.1.0 (default: latest)
@@ -14,7 +14,7 @@
     $ProgressPreference = 'SilentlyContinue'  # makes Invoke-WebRequest much faster on Windows PowerShell 5.1
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
-    $Repo = 'deckplane/deckplane-cli'
+    $Repo = 'deckplane/cli'
 
     function Step($msg) { Write-Host "-> $msg" -ForegroundColor Cyan }
     function Ok($msg) { Write-Host "OK $msg" -ForegroundColor Green }

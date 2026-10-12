@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/deckplane/deckplane-cli/internal/envfile"
-	"github.com/deckplane/deckplane-cli/internal/stack"
+	"github.com/deckplane/cli/internal/envfile"
+	"github.com/deckplane/cli/internal/stack"
 )
 
 const (

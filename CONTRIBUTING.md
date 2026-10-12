@@ -4,7 +4,7 @@ Thanks for helping improve the Deckplane CLI! Bug reports, ideas and pull reques
 
 ## Reporting a bug
 
-[Open an issue](https://github.com/deckplane/deckplane-cli/issues/new/choose) and include:
+[Open an issue](https://github.com/deckplane/cli/issues/new/choose) and include:
 
 - the output of `deckplane version` and `deckplane doctor`,
 - the command you ran and its full output (run it again with `-v` for Docker's output),

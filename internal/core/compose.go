@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"text/template"
 
-	"github.com/deckplane/deckplane-cli/internal/stack"
+	"github.com/deckplane/cli/internal/stack"
 )
 
 // traefikImage needs v3.6 or newer: older releases cannot talk to Docker 29+.

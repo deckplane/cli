@@ -4,13 +4,13 @@
 
 Please **do not** report security problems in public issues.
 
-Report them privately through GitHub: open the repository's **Security** tab and choose **Report a vulnerability** ([direct link](https://github.com/deckplane/deckplane-cli/security/advisories/new)).
+Report them privately through GitHub: open the repository's **Security** tab and choose **Report a vulnerability** ([direct link](https://github.com/deckplane/cli/security/advisories/new)).
 
 Include what you found, the steps to reproduce it and the CLI version (`deckplane version`). We will confirm receipt within three working days and keep you updated until it is fixed. Please give us a reasonable time to release a fix before disclosing the issue.
 
 ## Supported versions
 
-Security fixes are released for the latest version only. Update by running the installer again, or with `go install github.com/deckplane/deckplane-cli@latest`.
+Security fixes are released for the latest version only. Update by running the installer again, or with `go install github.com/deckplane/cli@latest`.
 
 ## How the CLI handles secrets
 

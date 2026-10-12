@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"github.com/deckplane/deckplane-cli/internal/agent"
-	"github.com/deckplane/deckplane-cli/internal/paths"
+	"github.com/deckplane/cli/internal/agent"
+	"github.com/deckplane/cli/internal/paths"
 	"github.com/yigit433/kommando/v3"
 )
 

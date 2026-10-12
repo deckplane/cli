@@ -3,8 +3,8 @@ package main
 import (
 	"os"
 
-	"github.com/deckplane/deckplane-cli/cmd"
-	"github.com/deckplane/deckplane-cli/internal/ui"
+	"github.com/deckplane/cli/cmd"
+	"github.com/deckplane/cli/internal/ui"
 )
 
 func main() {

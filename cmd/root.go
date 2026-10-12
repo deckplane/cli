@@ -6,8 +6,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/deckplane/deckplane-cli/internal/buildinfo"
-	"github.com/deckplane/deckplane-cli/internal/doctor"
+	"github.com/deckplane/cli/internal/buildinfo"
+	"github.com/deckplane/cli/internal/doctor"
 	"github.com/yigit433/kommando/v3"
 )
 

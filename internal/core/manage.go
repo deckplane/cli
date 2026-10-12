@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/deckplane/deckplane-cli/internal/docker"
-	"github.com/deckplane/deckplane-cli/internal/envfile"
-	"github.com/deckplane/deckplane-cli/internal/stack"
-	"github.com/deckplane/deckplane-cli/internal/ui"
+	"github.com/deckplane/cli/internal/docker"
+	"github.com/deckplane/cli/internal/envfile"
+	"github.com/deckplane/cli/internal/stack"
+	"github.com/deckplane/cli/internal/ui"
 )
 
 // Installation is an existing Core install on this machine.

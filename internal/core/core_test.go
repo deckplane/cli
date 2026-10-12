@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/deckplane/deckplane-cli/internal/envfile"
+	"github.com/deckplane/cli/internal/envfile"
 )
 
 func TestValidateLicenseKey(t *testing.T) {

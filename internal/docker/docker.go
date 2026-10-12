@@ -13,7 +13,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/deckplane/deckplane-cli/internal/ui"
+	"github.com/deckplane/cli/internal/ui"
 )
 
 // Check verifies that Docker is installed, the daemon is running and the

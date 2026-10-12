@@ -1,7 +1,7 @@
 #!/bin/sh
 # Installs the deckplane CLI on Linux and macOS:
 #
-#   curl -fsSL https://raw.githubusercontent.com/deckplane/deckplane-cli/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/deckplane/cli/main/install.sh | sh
 #
 # Optional environment variables:
 #   DECKPLANE_VERSION       release to install, e.g. v0.1.0 (default: latest)
@@ -12,7 +12,7 @@
 
 set -eu
 
-REPO="deckplane/deckplane-cli"
+REPO="deckplane/cli"
 
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
 	BOLD="$(printf '\033[1m')"; GREEN="$(printf '\033[32m')"; RED="$(printf '\033[31m')"

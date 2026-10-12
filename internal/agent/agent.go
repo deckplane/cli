@@ -14,11 +14,11 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/deckplane/deckplane-cli/internal/docker"
-	"github.com/deckplane/deckplane-cli/internal/envfile"
-	"github.com/deckplane/deckplane-cli/internal/paths"
-	"github.com/deckplane/deckplane-cli/internal/stack"
-	"github.com/deckplane/deckplane-cli/internal/ui"
+	"github.com/deckplane/cli/internal/docker"
+	"github.com/deckplane/cli/internal/envfile"
+	"github.com/deckplane/cli/internal/paths"
+	"github.com/deckplane/cli/internal/stack"
+	"github.com/deckplane/cli/internal/ui"
 )
 
 const (
