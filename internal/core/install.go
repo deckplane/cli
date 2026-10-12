@@ -102,7 +102,7 @@ func Install(o InstallOptions) error {
 	ui.Success("Configuration saved in %s", o.Dir)
 
 	p := docker.Project{Dir: o.Dir, Verbose: o.Verbose}
-	if err := pullAndStart(p); err != nil {
+	if err := pullAndStart(p, s); err != nil {
 		return err
 	}
 
@@ -395,13 +395,17 @@ func signIn(registry, key string) error {
 
 func devMode() bool { return os.Getenv("DECKPLANE_DEV") == "1" }
 
-func pullAndStart(p docker.Project) error {
+func pullAndStart(p docker.Project, s Settings) error {
 	ui.Step("Downloading Deckplane Core (the first time can take a few minutes)")
 	pullArgs := []string{"pull"}
 	if devMode() {
 		pullArgs = append(pullArgs, "--ignore-pull-failures")
 	}
 	if err := p.Stream(pullArgs...); err != nil {
+		if !devMode() && docker.ImageMissing(s.Image()) {
+			return ui.NewError(fmt.Sprintf("Deckplane Core %s is not published yet", s.Version),
+				fmt.Sprintf("%s does not exist in the registry. Try again later,\nor install a published version with --version vX.Y.Z.", s.Image()), nil)
+		}
 		return ui.NewError("Downloading the images failed", "Run `deckplane doctor` to check the connection.", err)
 	}
 	ui.Step("Starting Deckplane Core")

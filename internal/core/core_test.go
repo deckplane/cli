@@ -138,3 +138,20 @@ func TestOldPortInstallMovesBehindTraefik(t *testing.T) {
 		t.Fatalf("old domain install: %+v", s)
 	}
 }
+
+func TestWriteComposeMovesOldComposeFileAside(t *testing.T) {
+	dir := t.TempDir()
+	old := filepath.Join(dir, "docker-compose.yml")
+	if err := os.WriteFile(old, []byte("services: {}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeCompose(dir, Settings{Proxy: ProxyBundled}.withDefaults()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(old); !os.IsNotExist(err) {
+		t.Error("docker-compose.yml is still next to compose.yaml")
+	}
+	if _, err := os.Stat(old + ".old"); err != nil {
+		t.Error("the old file was not kept as docker-compose.yml.old")
+	}
+}

@@ -152,7 +152,7 @@ func (in *Installation) Update(version string) error {
 	}
 	defer docker.Logout(s.Registry)
 	before := docker.ContainerImage(containerName)
-	if err := pullAndStart(in.Project); err != nil {
+	if err := pullAndStart(in.Project, s); err != nil {
 		return err
 	}
 	ui.Success("Deckplane Core is up to date (%s)", s.Image())

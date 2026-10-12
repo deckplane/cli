@@ -166,6 +166,17 @@ func Login(registry, username, password string) error {
 	return fmt.Errorf("docker login %s failed: %s", registry, strings.TrimSpace(string(out)))
 }
 
+// ImageMissing reports whether the registry says image does not exist (as
+// opposed to being unreachable). It uses the credentials of `docker login`.
+func ImageMissing(image string) bool {
+	out, err := exec.Command("docker", "manifest", "inspect", image).CombinedOutput()
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(string(out))
+	return strings.Contains(msg, "no such manifest") || strings.Contains(msg, "not found") || strings.Contains(msg, "name unknown") || strings.Contains(msg, "name_unknown")
+}
+
 // Logout removes stored credentials for registry. Errors are ignored.
 func Logout(registry string) { _ = exec.Command("docker", "logout", registry).Run() }
 

@@ -2,10 +2,12 @@ package core
 
 import (
 	"bytes"
+	"os"
 	"path/filepath"
 	"text/template"
 
 	"github.com/deckplane/cli/internal/stack"
+	"github.com/deckplane/cli/internal/ui"
 )
 
 // traefikImage needs v3.6 or newer: older releases cannot talk to Docker 29+.
@@ -118,7 +120,21 @@ networks:
 {{- end}}
 `))
 
+// legacyComposeFiles are names Docker Compose also loads; the old CLI wrote
+// docker-compose.yml. Leaving them next to compose.yaml makes Compose warn
+// and could start the wrong stack, so they are moved aside.
+var legacyComposeFiles = []string{"docker-compose.yml", "docker-compose.yaml", "compose.yml"}
+
 func writeCompose(dir string, s Settings) error {
+	for _, name := range legacyComposeFiles {
+		old := filepath.Join(dir, name)
+		if _, err := os.Stat(old); err == nil {
+			if err := os.Rename(old, old+".old"); err != nil {
+				return err
+			}
+			ui.Info("Moved the old %s aside (now %s.old)", name, name)
+		}
+	}
 	var b bytes.Buffer
 	if err := composeTemplate.Execute(&b, s); err != nil {
 		return err
