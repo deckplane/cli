@@ -87,9 +87,26 @@ func (in *Installation) Logs(tail int, follow bool) error {
 	return in.Project.Attach(append(args, serviceName)...)
 }
 
+// ensureImage downloads the Core image when it is not on this machine, so
+// `up` never pulls from the private registry without signing in.
+func (in *Installation) ensureImage() error {
+	s := in.Settings()
+	if devMode() || docker.ImageExists(s.Image()) {
+		return nil
+	}
+	if err := signIn(s.Registry, in.Env.Get("LICENSE_KEY")); err != nil {
+		return err
+	}
+	defer docker.Logout(s.Registry)
+	return pullImages(in.Project, s)
+}
+
 // Start brings the stack up.
 func (in *Installation) Start() error {
 	if err := docker.Check(); err != nil {
+		return err
+	}
+	if err := in.ensureImage(); err != nil {
 		return err
 	}
 	ui.Step("Starting Deckplane Core")
@@ -121,6 +138,9 @@ func (in *Installation) Stop() error {
 
 // Restart recreates the Core container so .env changes take effect.
 func (in *Installation) Restart() error {
+	if err := in.ensureImage(); err != nil {
+		return err
+	}
 	ui.Step("Restarting Deckplane Core")
 	if err := releaseLegacyContainers(); err != nil {
 		return err

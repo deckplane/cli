@@ -416,17 +416,8 @@ func signIn(registry, key string) error {
 func devMode() bool { return os.Getenv("DECKPLANE_DEV") == "1" }
 
 func pullAndStart(p docker.Project, s Settings) error {
-	ui.Step("Downloading Deckplane Core (the first time can take a few minutes)")
-	pullArgs := []string{"pull"}
-	if devMode() {
-		pullArgs = append(pullArgs, "--ignore-pull-failures")
-	}
-	if err := p.Stream(pullArgs...); err != nil {
-		if !devMode() && docker.ImageMissing(s.Image()) {
-			return ui.NewError(fmt.Sprintf("Deckplane Core %s is not published yet", s.Version),
-				fmt.Sprintf("%s does not exist in the registry. Try again later,\nor install a published version with --version vX.Y.Z.", s.Image()), nil)
-		}
-		return ui.NewError("Downloading the images failed", "Run `deckplane doctor` to check the connection.", err)
+	if err := pullImages(p, s); err != nil {
+		return err
 	}
 	ui.Step("Starting Deckplane Core")
 	if err := releaseLegacyContainers(); err != nil {
@@ -440,6 +431,24 @@ func pullAndStart(p docker.Project, s Settings) error {
 		return err
 	}
 	ui.Success("Deckplane Core is healthy")
+	return nil
+}
+
+// pullImages downloads the stack's images. The registry must already be
+// signed in to (see signIn).
+func pullImages(p docker.Project, s Settings) error {
+	ui.Step("Downloading Deckplane Core (the first time can take a few minutes)")
+	pullArgs := []string{"pull"}
+	if devMode() {
+		pullArgs = append(pullArgs, "--ignore-pull-failures")
+	}
+	if err := p.Stream(pullArgs...); err != nil {
+		if !devMode() && docker.ImageMissing(s.Image()) {
+			return ui.NewError(fmt.Sprintf("Deckplane Core %s is not published yet", s.Version),
+				fmt.Sprintf("%s does not exist in the registry. Try again later,\nor install a published version with --version vX.Y.Z.", s.Image()), nil)
+		}
+		return ui.NewError("Downloading the images failed", "Run `deckplane doctor` to check the connection.", err)
+	}
 	return nil
 }
 

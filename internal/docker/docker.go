@@ -177,6 +177,11 @@ func ImageMissing(image string) bool {
 	return strings.Contains(msg, "no such manifest") || strings.Contains(msg, "not found") || strings.Contains(msg, "name unknown") || strings.Contains(msg, "name_unknown")
 }
 
+// ImageExists reports whether image is already on this machine.
+func ImageExists(image string) bool {
+	return exec.Command("docker", "image", "inspect", image).Run() == nil
+}
+
 // Logout removes stored credentials for registry. Errors are ignored.
 func Logout(registry string) { _ = exec.Command("docker", "logout", registry).Run() }
 
