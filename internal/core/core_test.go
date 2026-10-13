@@ -155,3 +155,37 @@ func TestWriteComposeMovesOldComposeFileAside(t *testing.T) {
 		t.Error("the old file was not kept as docker-compose.yml.old")
 	}
 }
+
+func TestOpenRewritesComposeFileOfTheOldProject(t *testing.T) {
+	dir := t.TempDir()
+	env := "LICENSE_KEY=dpl_test\nDB_PASSWORD=pw\n"
+	if err := os.WriteFile(filepath.Join(dir, envFileName), []byte(env), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	legacy := "name: deckplane\n\nservices:\n  postgres:\n    image: postgres:16-alpine\n"
+	if err := os.WriteFile(filepath.Join(dir, composeFile), []byte(legacy), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Open(dir, false); err != nil {
+		t.Fatal(err)
+	}
+	out, err := os.ReadFile(filepath.Join(dir, composeFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := composeProject(string(out)); got != projectName {
+		t.Fatalf("project after Open = %q, want %q", got, projectName)
+	}
+
+	// A current file is left alone.
+	stamp := []byte("name: " + projectName + "\n# kept\n")
+	if err := os.WriteFile(filepath.Join(dir, composeFile), stamp, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Open(dir, false); err != nil {
+		t.Fatal(err)
+	}
+	if out, _ := os.ReadFile(filepath.Join(dir, composeFile)); string(out) != string(stamp) {
+		t.Error("Open rewrote a compose file that already uses the new project name")
+	}
+}

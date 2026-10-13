@@ -33,7 +33,44 @@ func Open(dir string, verbose bool) (*Installation, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Installation{Dir: dir, Env: env, Project: docker.Project{Dir: dir, Verbose: verbose}}, nil
+	in := &Installation{Dir: dir, Env: env, Project: docker.Project{Dir: dir, Verbose: verbose}}
+	if err := in.upgradeCompose(); err != nil {
+		return nil, err
+	}
+	return in, nil
+}
+
+// upgradeCompose rewrites a compose file still naming the v0.1.0 project.
+// Every command runs Compose against that file, so with the old name start,
+// restart and stop acted on project "deckplane" and replaced or stopped
+// Deckplane Cloud's postgres service when both run on one machine.
+func (in *Installation) upgradeCompose() error {
+	path := filepath.Join(in.Dir, composeFile)
+	content, err := os.ReadFile(path)
+	if os.IsNotExist(err) || (err == nil && composeProject(string(content)) == projectName) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if err := writeCompose(in.Dir, in.Settings()); err != nil {
+		if os.IsPermission(err) {
+			return permissionError(in.Dir, err)
+		}
+		return err
+	}
+	ui.Info("Updated %s to run Core as its own Compose project (%s)", path, projectName)
+	return nil
+}
+
+// composeProject returns the top-level `name:` of a compose file.
+func composeProject(content string) string {
+	for _, line := range strings.Split(content, "\n") {
+		if name, ok := strings.CutPrefix(line, "name:"); ok {
+			return strings.TrimSpace(name)
+		}
+	}
+	return ""
 }
 
 func (in *Installation) Settings() Settings { return settingsFrom(in.Env) }
