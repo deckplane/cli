@@ -104,6 +104,7 @@ Print the token on the Core machine with `deckplane core token`. If Core runs on
 | `deckplane core start` / `stop` / `restart` | Start, stop, or restart Core |
 | `deckplane core update [--version v1.2.3]` | Update to the latest or a given version |
 | `deckplane core setup` | Create the first admin account |
+| `deckplane core reset-password [EMAIL]` | Set a new password for an account (forgotten admin password) |
 | `deckplane core token` | Print the token agents connect with |
 | `deckplane core config` | Show settings (secrets masked; `--reveal` shows them) |
 | `deckplane core config set KEY=VALUE --restart` | Change a setting and apply it |

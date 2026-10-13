@@ -22,6 +22,7 @@ func coreCmd() *kommando.Command {
 			coreAction("restart", "Restart Deckplane Core and apply changed settings", (*core.Installation).Restart),
 			coreUpdateCmd(),
 			coreAction("setup", "Create the first admin account", (*core.Installation).Setup),
+			coreResetPasswordCmd(),
 			coreTokenCmd(),
 			coreConfigCmd(),
 			coreLicenseCmd(),
@@ -144,6 +145,28 @@ func coreTokenCmd() *kommando.Command {
 			}
 			fmt.Fprintln(ctx.Output(), in.AgentToken())
 			return nil
+		},
+	}
+}
+
+func coreResetPasswordCmd() *kommando.Command {
+	return &kommando.Command{
+		Name:        "reset-password",
+		Description: "Set a new password for an account: reset-password [EMAIL]",
+		Flags:       []kommando.Flag{dirFlag(paths.CoreDir, "Core")},
+		Execute: func(ctx *kommando.Context) error {
+			if len(ctx.Args()) > 1 {
+				return ui.NewError("Expected at most one email", "Usage:  deckplane core reset-password [EMAIL]", nil)
+			}
+			in, err := openCore(ctx)
+			if err != nil {
+				return err
+			}
+			email := ""
+			if len(ctx.Args()) == 1 {
+				email = ctx.Args()[0]
+			}
+			return in.ResetPassword(email)
 		},
 	}
 }

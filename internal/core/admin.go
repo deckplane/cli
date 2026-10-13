@@ -129,18 +129,8 @@ func SetupAdmin(p docker.Project) error {
 	if a.FullName, err = ui.AskRequired("Full name:", "", minLen("name", 2)); err != nil {
 		return err
 	}
-	for {
-		if a.Password, err = ui.AskSecret("Password (at least 8 characters, hidden):", minLen("password", 8)); err != nil {
-			return err
-		}
-		again, err := ui.AskSecret("Repeat the password:", nil)
-		if err != nil {
-			return err
-		}
-		if again == a.Password {
-			break
-		}
-		ui.Warn("The passwords do not match, try again.")
+	if a.Password, err = askPassword("Password"); err != nil {
+		return err
 	}
 	if err := createAdmin(p, a); err != nil {
 		return err

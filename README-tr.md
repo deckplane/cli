@@ -104,6 +104,7 @@ Token'ı Core'un kurulu olduğu makinede `deckplane core token` ile görebilirsi
 | `deckplane core start` / `stop` / `restart` | Core'u başlatır, durdurur veya yeniden başlatır |
 | `deckplane core update [--version v1.2.3]` | En son ya da belirtilen sürüme günceller |
 | `deckplane core setup` | İlk yönetici hesabını oluşturur |
+| `deckplane core reset-password [EPOSTA]` | Bir hesabın şifresini yeniler (unutulan yönetici şifresi) |
 | `deckplane core token` | Agent'ların bağlanırken kullandığı token'ı yazdırır |
 | `deckplane core config` | Ayarları gösterir (gizli değerler maskelenir; `--reveal` açar) |
 | `deckplane core config set ANAHTAR=DEĞER --restart` | Bir ayarı değiştirir ve uygular |
